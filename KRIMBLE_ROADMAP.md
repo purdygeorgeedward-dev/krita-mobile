@@ -93,3 +93,44 @@ in-app tool.
 better detail hallucination than the dnn_superres models, but heavier/slower
 and a bigger integration lift. Worth revisiting later as a higher-quality
 optional mode once the ESPCN/FSRCNN path is working.
+
+## Quick Mask
+
+Status: **not started** -- confirmed genuinely missing (searched the entire
+codebase under every naming variant: quickmask, quick_mask, QuickMask --
+zero hits). Not a relocation/UI-parity case like Channels or Select Opaque;
+this needs building from scratch.
+
+**What it is:** paint a selection into existence instead of using
+marquee/lasso/wand. Toggle on (Q key in Photoshop) -> canvas shows a
+semi-transparent red overlay (rubylith-style) over everything NOT selected
+-> paint in black/white/gray with any normal brush (black removes from
+selection, white adds, gray = partial/feathered) -> toggle off -> the
+painted result becomes a real active selection.
+
+**Closest existing Krita infrastructure to build on:**
+- Krita's Selection Masks (grayscale mask layers) are conceptually the
+  same underlying data model a Quick Mask needs -- a paintable grayscale
+  layer that converts to/from a real selection.
+- The Colorize Mask tool (libs/image/lazybrush/kis_colorize_mask.cpp)
+  proves the "special temporary paintable overlay tied to a toggle state"
+  pattern already exists in this codebase, just for a different purpose.
+
+**Rough implementation shape:**
+1. Toggle action that creates a temporary paintable grayscale device
+   representing the mask, seeded from the current selection (or fully
+   selected if none exists).
+2. Canvas rendering: composite that grayscale device as a semi-transparent
+   red overlay over the normal image while active (inverse of the
+   grayscale value = overlay opacity, matching the rubylith convention).
+3. While active, redirect normal paint tools to paint into the mask device
+   instead of the image (grayscale in, not full color).
+4. On toggle-off: convert the grayscale mask device into a real
+   KisSelection (threshold/gradient -> selection, feathered where gray),
+   apply it as the active selection, discard the temporary device.
+5. Toolbox button (bottom of toolbox, alongside the FG/BG swap widget and
+   Screen Mode) + Q shortcut, matching Photoshop's actual entry points.
+
+Likely a genuinely medium-sized feature -- more than a UI wrapper, less
+than the AI upscaler. Worth scoping properly (time estimate, step-by-step
+plan) when it's next in line for actual implementation.
